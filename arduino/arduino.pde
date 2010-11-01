@@ -1,4 +1,4 @@
-int pins[] = {0, 1, 2};
+int pins[] = {0};
 
 void setup() {
   Serial.begin(9600); 
