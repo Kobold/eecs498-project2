@@ -16,8 +16,9 @@ void loop() {
     sendInt(analogValue);  
   }
   
-  // wait 100ms to sample again
-  delay(500);
+  // wait 200ms to sample, yields an fft spectrum between [0, 2.5Hz]
+  // 1 / (2 * T) = omega
+  delay(200);
 }
 
 void sendInt(int i){
