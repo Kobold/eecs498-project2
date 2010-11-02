@@ -2,8 +2,9 @@ import java.util.Date;
 import processing.serial.*;
 
 // serial port communication
-Serial myPort;
 int sensorCount = 1;
+Serial inPort;
+Serial outPort;
 
 // synchronizing with serial data stream
 boolean sync = false;
@@ -18,10 +19,15 @@ void setup()
 {
   size(500, 200);
   
-  // serial port setup
-  String portName = Serial.list()[0];
-  println("serial port: " + portName);
-  myPort = new Serial(this, portName, 9600);
+  // input serial port setup
+  String portName = Serial.list()[2];
+  println("in serial port: " + portName);
+  inPort = new Serial(this, portName, 9600);
+  
+  // output serial port setup
+  portName = Serial.list()[0];
+  println("out serial port: " + portName);
+  outPort = new Serial(this, portName, 9600);
   
   // initialize the minimum and maximum value buffers
   fftMin = new double[fftBufferSize];
@@ -35,22 +41,23 @@ void setup()
 void draw()
 {
   if (!sync) {
-    int temp = myPort.read();
+    int temp = inPort.read();
     sync = (temp == 255) && (previousValue == 255);
     previousValue = temp;
+    println("synching port");
   }
   
-  if (sync && (myPort.available() >= 2 + 2 * sensorCount)) {
+  if (sync && (inPort.available() >= 2 + 2 * sensorCount)) {
     // parse the serial values
     ArrayList readings = new ArrayList();
     for (int i = 0; i < sensorCount; i++) {
-      int low = myPort.read();
-      int high= myPort.read();
+      int low = inPort.read();
+      int high= inPort.read();
       int reading = (high << 8) + low;
       readings.add(new Integer(reading));
     } 
-    myPort.read();
-    myPort.read();
+    inPort.read();
+    inPort.read();
     
     // add the reading to the fft buffer
     fftBuffer.addLast(readings.get(0));
@@ -82,14 +89,18 @@ void draw()
       }
       
       // display it
+      outPort.write(255);
+      
       background(0);
       fill(200, 0, 0);
       rectMode(CORNERS);
       for (int i = 0; i < bins; i++) {
         double val = fftScaled[i];
-        long quantized = Math.round(val * 4);
+        byte quantized = (byte)Math.round(val * 4);
         double rescaled = (double)quantized / 4.0;
         rect(50 * i, height, 50 * (i + 1), (float)(height - height * rescaled));
+        
+        outPort.write(quantized);
       }
     }
   }
