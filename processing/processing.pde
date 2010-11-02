@@ -9,9 +9,10 @@ int sensorCount = 1;
 boolean sync = false;
 int previousValue = 0;
 
-long lastSampleTime;
+// fft related stuff
 int fftBufferSize = 16;
 LinkedList fftBuffer = new LinkedList();
+double[] fftMax, fftMin;
 
 void setup()
 {
@@ -22,7 +23,13 @@ void setup()
   println("serial port: " + portName);
   myPort = new Serial(this, portName, 9600);
   
-  lastSampleTime = new Date().getTime();
+  // initialize the minimum and maximum value buffers
+  fftMin = new double[fftBufferSize];
+  fftMax = new double[fftBufferSize];
+  for (int i = 0; i < fftBufferSize; i++) {
+    fftMin[i] = 100000.0;
+    fftMax[i] = 0.0;
+  }
 }
 
 void draw()
@@ -41,10 +48,6 @@ void draw()
       int high= myPort.read();
       int reading = (high << 8) + low;
       readings.add(new Integer(reading));
-      
-      long newSampleTime = new Date().getTime();
-      println("T = " + (newSampleTime - lastSampleTime));
-      lastSampleTime = newSampleTime;
     } 
     myPort.read();
     myPort.read();
@@ -66,13 +69,27 @@ void draw()
       // perform the FFT
       Complex[] fft = FFT.fft(signal);
       
+      // scale it for display
       int bins = fftBufferSize / 2 + 1;
+      double[] fftScaled = new double[bins];
+      for (int i = 0; i < bins; i++) {
+        double a = fft[i].abs();
+        fftMin[i] = Math.min(fftMin[i], a);
+        fftMax[i] = Math.max(fftMax[i], a);
+        
+        double range = fftMax[i] - fftMin[i];
+        fftScaled[i] = (a - fftMin[i]) / range;
+      }
+      
+      // display it
       background(0);
-      fill(255);
+      fill(200, 0, 0);
       rectMode(CORNERS);
       for (int i = 0; i < bins; i++) {
-        double a = Math.log(fft[i].abs());
-        rect(10 * i, height, 10 * (i + 1), (float)(height - height * (a / 8.5)));
+        double val = fftScaled[i];
+        long quantized = Math.round(val * 4);
+        double rescaled = (double)quantized / 4.0;
+        rect(50 * i, height, 50 * (i + 1), (float)(height - height * rescaled));
       }
     }
   }
