@@ -1,3 +1,4 @@
+import java.util.Date;
 import processing.serial.*;
 
 // serial port communication
@@ -8,15 +9,20 @@ int sensorCount = 1;
 boolean sync = false;
 int previousValue = 0;
 
-int fftBufferSize = 4;
+long lastSampleTime;
+int fftBufferSize = 16;
 LinkedList fftBuffer = new LinkedList();
 
 void setup()
 {
+  size(500, 200);
+  
   // serial port setup
   String portName = Serial.list()[0];
   println("serial port: " + portName);
   myPort = new Serial(this, portName, 9600);
+  
+  lastSampleTime = new Date().getTime();
 }
 
 void draw()
@@ -35,8 +41,11 @@ void draw()
       int high= myPort.read();
       int reading = (high << 8) + low;
       readings.add(new Integer(reading));
+      
+      long newSampleTime = new Date().getTime();
+      println("T = " + (newSampleTime - lastSampleTime));
+      lastSampleTime = newSampleTime;
     } 
-    println("");
     myPort.read();
     myPort.read();
     
@@ -56,9 +65,15 @@ void draw()
       
       // perform the FFT
       Complex[] fft = FFT.fft(signal);
+      
+      int bins = fftBufferSize / 2 + 1;
+      background(0);
+      fill(255);
+      rectMode(CORNERS);
       print("[");
-      for (Complex s : fft) {
-        print(s.abs() + ", ");
+      for (int i = 0; i < bins; i++) {
+        double a = Math.log(fft[i].abs());
+        rect(10 * i, height, 10 * (i + 1), (float)(height - height * (a / 8.5)));
       }
       println("]");
     }
