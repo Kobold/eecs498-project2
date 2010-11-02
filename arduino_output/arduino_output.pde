@@ -31,10 +31,10 @@ byte generateOutputBits(int input)
   return out;
 }
 
-void outputBits(byte output, int bitCount)
+void outputBits(byte output)
 {
-  byte mask = 1;
-  for (int i = 0; i < bitCount; i++) {
+  byte mask = 0x8;
+  for (int i = 0; i < 4; i++) {
     if (output & mask) {
       digitalWrite(data, HIGH);
     } else {
@@ -45,7 +45,7 @@ void outputBits(byte output, int bitCount)
     delayMicroseconds(10);
     digitalWrite(clock, LOW);
     
-    mask = mask << 1;
+    mask = mask >> 1;
   }
 }
 
@@ -56,7 +56,7 @@ void loop()
     int input = Serial.read();
     synced = (input == 255);
   }
-  
+
   // test if there's enough input to update the display
   if (synced && (Serial.available() > frequencyCount)) {
     // read in the amplitudes to display
@@ -64,13 +64,14 @@ void loop()
     for (int i = 0; i < frequencyCount; i++) {
       amplitudes[i] = Serial.read();
     }
-    Serial.read(); // read off the sync 255
+    int stopgap = Serial.read();
+    synced = (stopgap == 255); // read off the sync 255
     
     // output the values to the shift register
     digitalWrite(latch, LOW);
     for (int i = frequencyCount - 1; i >= 0; i--) {
       byte output = generateOutputBits(amplitudes[i]);
-      outputBits(output, 4);
+      outputBits(output);
     }
     digitalWrite(latch, HIGH);
   }
